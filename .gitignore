@@ -1,11 +1,9 @@
-# Environment variables
+# In .gitignore
+
+# Environment
 .env
 
-# Python virtual environment
-venv/
+# Python
 __pycache__/
+venv/
 *.pyc
-
-# IDE files
-.idea/
-.vscode/
