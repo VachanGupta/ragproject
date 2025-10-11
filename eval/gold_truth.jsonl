@@ -1,0 +1,4 @@
+{"question": "What is the camera and battery life of the QuantumLeap X?", "ground_truth_answer": "It has a 200MP camera and a self-charging battery that lasts 100 hours.", "source_doc_ids": ["product-001_0"]}
+{"question": "What material is the phone made of?", "ground_truth_answer": "The phone is constructed from durable titanium.", "source_doc_ids": ["product-001_1"]}
+{"question": "Does the QuantumLeap X have a good camera and is it durable?", "ground_truth_answer": "Yes, it has a 200MP camera and is made of durable titanium.", "source_doc_ids": ["product-001_0", "product-001_1"]}
+{"question": "What is the warranty period?", "ground_truth_answer": "I don't know.", "source_doc_ids": []}
