@@ -1,8 +1,13 @@
 # In streamlit_app.py
 
 import streamlit as st
-import requests
+import os
+import time
 import json
+import chromadb
+from sentence_transformers import SentenceTransformer, CrossEncoder
+from groq import Groq
+import redis
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -13,46 +18,126 @@ st.set_page_config(
 
 # --- App Title ---
 st.title("🤖 QuantumLeap X - RAG Assistant")
-st.caption("This chat assistant is powered by a local RAG pipeline and the Groq API.")
+st.caption("A fully-featured RAG application deployed on Hugging Face Spaces.")
 
-# --- API Endpoint ---
-API_URL = "http://127.0.0.1:8000/api/v1/chat"
+# --- Model and Client Initialization ---
+# Use Streamlit's caching to load models only once
+@st.cache_resource
+def load_models_and_clients():
+    """
+    Load all the necessary models and clients for the RAG pipeline.
+    This function is cached, so it only runs once.
+    """
+    # Use secrets for the API key, which we set in the Space's settings
+    groq_api_key = st.secrets.get("GROQ_API_KEY")
+    if not groq_api_key:
+        st.error("GROQ_API_KEY secret not found. Please set it in your Space's settings.")
+        st.stop()
 
-# --- Session State for Chat History ---
+    clients = {
+        "embedding_model": SentenceTransformer('all-MiniLM-L6-v2'),
+        "reranker_model": CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2'),
+        "groq_client": Groq(api_key=groq_api_key),
+        "chroma_client": chromadb.Client(),  # Use an in-memory ephemeral client
+    }
+    # Create the collection here
+    clients["chroma_collection"] = clients["chroma_client"].get_or_create_collection(name="product_docs")
+    return clients
+
+# Load everything
+clients = load_models_and_clients()
+embedding_model = clients["embedding_model"]
+reranker_model = clients["reranker_model"]
+groq_client = clients["groq_client"]
+chroma_collection = clients["chroma_collection"]
+
+# --- Ingestion Logic ---
+# Keep track of whether we've ingested data in this session
+if "ingested" not in st.session_state:
+    with st.spinner("Ingesting knowledge base... This may take a moment."):
+        full_text = """
+        The new QuantumLeap X is a revolutionary smartphone with a 200MP camera. It features a holographic display and a self-charging battery that lasts for 100 hours.
+
+        The phone is made of durable titanium and is available in cosmic black and stardust silver. The QuantumLeap X is also water-resistant up to 50 meters.
+        """
+        chunks = full_text.split("\n\n")
+        chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
+        chunk_ids = [f"product-001_{i}" for i in range(len(chunks))]
+        
+        chroma_collection.add(
+            embeddings=embedding_model.encode(chunks).tolist(),
+            documents=chunks,
+            metadatas=[{'doc_id': "product-001"} for _ in chunks],
+            ids=chunk_ids
+        )
+        st.session_state.ingested = True
+        st.success("Knowledge base ingested successfully!")
+
+
+# --- Core RAG Logic Function ---
+def run_rag_pipeline(query: str):
+    """
+    This function contains the full RAG logic, from query to answer.
+    """
+    # Multi-Query Generation
+    sub_query_prompt = f"Generate 3 diverse search queries based on: {query}"
+    try:
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are a query generation assistant... Respond with a valid JSON object of the format {\"queries\": [\"query1\", \"query2\", \"query3\"]}"},
+                {"role": "user", "content": query},
+            ],
+            model="llama-3.1-8b-instant", temperature=0.2, response_format={"type": "json_object"}
+        )
+        sub_queries_data = json.loads(chat_completion.choices[0].message.content)
+        search_queries = list(sub_queries_data.values())[0] if isinstance(sub_queries_data, dict) else sub_queries_data
+        search_queries.append(query)
+    except Exception:
+        search_queries = [query]
+
+    # Initial Retrieval
+    all_retrieved_docs = {}
+    for sub_q in set(search_queries):
+        results = chroma_collection.query(query_embeddings=[embedding_model.encode(sub_q).tolist()], n_results=5)
+        for i in range(len(results['ids'][0])):
+            doc_id = results['ids'][0][i]
+            all_retrieved_docs[doc_id] = {'text': results['documents'][0][i], 'meta': results['metadatas'][0][i]}
+
+    if not all_retrieved_docs:
+        return "I could not find any relevant information to answer your question.", []
+
+    # Reranking
+    initial_docs_list = list(all_retrieved_docs.values())
+    rerank_pairs = [[query, doc['text']] for doc in initial_docs_list]
+    rerank_scores = reranker_model.predict(rerank_pairs)
+    reranked_results = sorted(zip(initial_docs_list, rerank_scores), key=lambda x: x[1], reverse=True)
+
+    # Final Context and Generation
+    top_n = 3
+    top_docs_reranked = [doc['text'] for doc, score in reranked_results[:top_n]]
+    context = "\n\n---\n\n".join(top_docs_reranked)
+    final_prompt = f"You are a helpful assistant. Answer the user's question based only on the context provided. If the answer is not in the context, say \"I don't know\".\n\nContext:\n{context}\n\nQuestion:\n{query}"
+    
+    final_completion = groq_client.chat.completions.create(
+        messages=[{"role": "user", "content": final_prompt}], model="llama-3.1-8b-instant"
+    )
+    return final_completion.choices[0].message.content
+
+# --- Chat UI Logic ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- Display Chat History ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- User Input ---
 if prompt := st.chat_input("Ask about the QuantumLeap X..."):
-    # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
-    # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Display assistant response in chat message container
     with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        message_placeholder.markdown("Thinking...")
-        
-        try:
-            # Call the FastAPI backend
-            response = requests.post(API_URL, json={"query": prompt})
-            response.raise_for_status() # Raise an exception for bad status codes
-            
-            full_response = response.json()
-            answer = full_response.get("answer", "Sorry, I encountered an error.")
-            
-            message_placeholder.markdown(answer)
-            # Add assistant response to chat history
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-
-        except requests.exceptions.RequestException as e:
-            error_message = f"Failed to connect to the backend: {e}"
-            message_placeholder.markdown(error_message)
-            st.session_state.messages.append({"role": "assistant", "content": error_message})
+        with st.spinner("Thinking..."):
+            response = run_rag_pipeline(prompt)
+            st.markdown(response)
+    st.session_state.messages.append({"role": "assistant", "content": response})
