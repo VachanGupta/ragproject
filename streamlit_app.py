@@ -29,7 +29,7 @@ def load_models_and_clients():
     This function is cached, so it only runs once.
     """
     # Use secrets for the API key, which we set in the Space's settings
-    groq_api_key = st.secrets.get("GROQ_API_KEY")
+    groq_api_key = os.environ.get("GROQ_API_KEY")
     if not groq_api_key:
         st.error("GROQ_API_KEY secret not found. Please set it in your Space's settings.")
         st.stop()
