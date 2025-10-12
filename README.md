@@ -1,3 +1,15 @@
+---
+title: RAG Project API & Demo
+emoji: 🤖
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8000
+---
+
+# 🚀 RAG Project API
+(The rest of your README.md file follows...)
+
 # 🚀 RAG Project API
 
 This project is a complete, end-to-end Retrieval-Augmented Generation (RAG) system built from scratch. It's designed to answer questions based on ingested documents, leveraging a sophisticated pipeline that includes multi-query retrieval, reranking, and high-speed inference with the Groq API. The entire application is containerized with Docker for easy setup and deployment.
