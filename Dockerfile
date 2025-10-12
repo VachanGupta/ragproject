@@ -4,6 +4,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# --- ADD THIS LINE ---
+# Set a writable cache directory for Hugging Face models
+ENV TRANSFORMERS_CACHE="/app/cache"
+
 # Copy requirements first for better layer caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
