@@ -18,4 +18,4 @@ COPY . .
 EXPOSE 8000
 
 # Launch the Streamlit UI as the main application
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8000", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8000", "--server.address=0.0.0.0"] 
