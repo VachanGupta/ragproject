@@ -1,23 +1,17 @@
 # In Dockerfile
 
-# Use the official Python 3.11 image
 FROM python:3.11-slim
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy the requirements file first to leverage Docker's layer caching
+# Copy requirements first for better layer caching
 COPY requirements.txt .
-
-# Install the Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy our application code into the container
-COPY ./app /app/app
+# Copy the rest of the application code
+COPY . .
 
-# Expose the port the app runs on
 EXPOSE 8000
 
-# The command to run the application
-# Use 0.0.0.0 to make it accessible from outside the container
+# Launch the Streamlit UI as the main application
 CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8000", "--server.address=0.0.0.0"]

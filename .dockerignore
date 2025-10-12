@@ -1,0 +1,14 @@
+# In .dockerignore
+
+# Ignore Python virtual environment
+venv/
+
+# Ignore Git directory
+.git/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore macOS files
+.DS_Store
