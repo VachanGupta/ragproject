@@ -26,21 +26,18 @@ st.caption("A fully-featured RAG application deployed on Hugging Face Spaces.")
 def load_models_and_clients():
     """
     Load all the necessary models and clients for the RAG pipeline.
-    This function is cached, so it only runs once.
     """
-    # Use secrets for the API key, which we set in the Space's settings
     groq_api_key = os.environ.get("GROQ_API_KEY")
     if not groq_api_key:
         st.error("GROQ_API_KEY secret not found. Please set it in your Space's settings.")
         st.stop()
 
     clients = {
-        "embedding_model": SentenceTransformer('all-MiniLM-L6-v2'),
-        "reranker_model": CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2'),
+        "embedding_model": SentenceTransformer('models/embedding_model'),
+        "reranker_model": CrossEncoder('models/reranker_model'),
         "groq_client": Groq(api_key=groq_api_key),
-        "chroma_client": chromadb.Client(),  # Use an in-memory ephemeral client
+        "chroma_client": chromadb.Client(),
     }
-    # Create the collection here
     clients["chroma_collection"] = clients["chroma_client"].get_or_create_collection(name="product_docs")
     return clients
 

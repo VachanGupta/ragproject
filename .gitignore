@@ -1,9 +1,7 @@
 # In .gitignore
-
-# Environment
-.env
-
-# Python
-__pycache__/
 venv/
+__pycache__/
 *.pyc
+.DS_Store
+
+.env
