@@ -1,4 +1,3 @@
-# In run_eval.py
 
 import json
 import requests
@@ -29,7 +28,7 @@ def run_evaluation():
         print(f"\n--- Running Test Case {i+1}/{len(test_cases)} ---")
         print(f"Question: {question}")
         
-        # Call the chat API
+        # call chat api
         response = requests.post(API_URL, json={"query": question})
         
         if response.status_code != 200:
@@ -45,7 +44,7 @@ def run_evaluation():
         print(f"  Generated Answer: {generated_answer}")
 
         # Calculate retrieval precision
-        if expected_sources: # Only calculate for questions that have known sources
+        if expected_sources:
             total_retrieval_queries += 1
             is_hit = bool(expected_sources.intersection(retrieved_ids))
             if is_hit:
@@ -54,7 +53,6 @@ def run_evaluation():
             print(f"    - Expected: {expected_sources}")
             print(f"    - Retrieved: {retrieved_ids}")
 
-    # Print final summary
     print("\n--- Evaluation Summary ---")
     if total_retrieval_queries > 0:
         precision = (retrieval_hits / total_retrieval_queries) * 100
@@ -64,6 +62,4 @@ def run_evaluation():
     print("--------------------------")
 
 if __name__ == "__main__":
-    # Make sure the Docker services are running before executing this script.
-    # Also, ensure you have ingested the necessary data.
     run_evaluation()
