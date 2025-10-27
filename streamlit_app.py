@@ -1,5 +1,3 @@
-# In streamlit_app.py
-
 import streamlit as st
 import os
 import time
@@ -9,19 +7,15 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from groq import Groq
 import redis
 
-# --- Page Configuration ---
 st.set_page_config(
     page_title="QuantumLeap X Assistant",
     page_icon="🤖",
     layout="centered"
 )
 
-# --- App Title ---
 st.title("🤖 QuantumLeap X - RAG Assistant")
 st.caption("A fully-featured RAG application deployed on Hugging Face Spaces.")
 
-# --- Model and Client Initialization ---
-# Use Streamlit's caching to load models only once
 @st.cache_resource
 def load_models_and_clients():
     """
@@ -48,8 +42,7 @@ reranker_model = clients["reranker_model"]
 groq_client = clients["groq_client"]
 chroma_collection = clients["chroma_collection"]
 
-# --- Ingestion Logic ---
-# Keep track of whether we've ingested data in this session
+#ingestion logic
 if "ingested" not in st.session_state:
     with st.spinner("Ingesting knowledge base... This may take a moment."):
         full_text = """
@@ -71,7 +64,7 @@ if "ingested" not in st.session_state:
         st.success("Knowledge base ingested successfully!")
 
 
-# --- Core RAG Logic Function ---
+#main rag logic
 def run_rag_pipeline(query: str):
     """
     This function contains the full RAG logic, from query to answer.
@@ -92,7 +85,7 @@ def run_rag_pipeline(query: str):
     except Exception:
         search_queries = [query]
 
-    # Initial Retrieval
+    # Retrieval
     all_retrieved_docs = {}
     for sub_q in set(search_queries):
         results = chroma_collection.query(query_embeddings=[embedding_model.encode(sub_q).tolist()], n_results=5)
@@ -109,7 +102,7 @@ def run_rag_pipeline(query: str):
     rerank_scores = reranker_model.predict(rerank_pairs)
     reranked_results = sorted(zip(initial_docs_list, rerank_scores), key=lambda x: x[1], reverse=True)
 
-    # Final Context and Generation
+    #final context
     top_n = 3
     top_docs_reranked = [doc['text'] for doc, score in reranked_results[:top_n]]
     context = "\n\n---\n\n".join(top_docs_reranked)
@@ -120,7 +113,7 @@ def run_rag_pipeline(query: str):
     )
     return final_completion.choices[0].message.content
 
-# --- Chat UI Logic ---
+# chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
