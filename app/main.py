@@ -1,5 +1,3 @@
-# In app/main.py
-
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
@@ -8,25 +6,21 @@ import time
 import os
 import json
 
-# --- Imports for Rate Limiting ---
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-# --- Imports for LLM, DB, Reranker, and Cache ---
 import chromadb
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from groq import Groq
 import redis
 
-# --- Deployment Logic ---
-# Check for a Render environment variable to determine if we're in production
+
 is_deployed = os.environ.get("RENDER", False)
 
-# --- Initialize Rate Limiter ---
+# Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
-# --- Application Setup ---
 app = FastAPI(
     title="RAG Project API",
     description="API for the Retrieval-Augmented Generation service.",
@@ -35,28 +29,22 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# --- Initialize Models and Clients on Startup ---
 @app.on_event("startup")
 def startup_event():
-    # Load all models and initialize clients
     app.state.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
     app.state.reranker_model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
     app.state.groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
     if is_deployed:
-        # Production: Use connection URLs from Render's environment and in-memory DB
         redis_url = os.environ.get("REDIS_URL")
         app.state.redis_client = redis.from_url(redis_url)
         app.state.chroma_client = chromadb.Client() # In-memory
     else:
-        # Local Development: Use Docker service names
         app.state.redis_client = redis.Redis(host='redis', port=6379, db=0)
         app.state.chroma_client = chromadb.HttpClient(host='chroma', port=8000)
 
-    # This collection is created in both environments
     app.state.chroma_collection = app.state.chroma_client.get_or_create_collection(name="product_docs")
 
-# --- Pydantic Models ---
 class IngestRequest(BaseModel):
     doc_id: str
     text: str
@@ -84,7 +72,6 @@ class ChatResponse(BaseModel):
     latency_ms: float
     cached: bool = False
 
-# --- API Endpoints ---
 @app.post("/api/v1/ingest", response_model=IngestResponse, tags=["Ingestion"])
 def ingest_data(request: IngestRequest):
     trace_id = str(uuid.uuid4())
@@ -118,7 +105,6 @@ def chat_with_rag(request: Request, chat_request: ChatRequest):
         return ChatResponse(**cached_data)
 
     try:
-        # Multi-Query Generation
         chat_completion = app.state.groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": "You are a query generation assistant. Rephrase the user's question into 3 diverse search queries. Always respond with a valid JSON object of the format {\"queries\": [\"query1\", \"query2\", \"query3\"]}"},
@@ -133,7 +119,6 @@ def chat_with_rag(request: Request, chat_request: ChatRequest):
         search_queries = list(sub_queries_data.values())[0] if isinstance(sub_queries_data, dict) else sub_queries_data
         search_queries.append(chat_request.query)
 
-        # Initial Retrieval for all sub-queries
         all_retrieved_docs = {}
         for query in set(search_queries):
             query_embedding = app.state.embedding_model.encode(query).tolist()
@@ -145,20 +130,17 @@ def chat_with_rag(request: Request, chat_request: ChatRequest):
         if not all_retrieved_docs:
             return ChatResponse(answer="I could not find any relevant information.", sources=[], retrieved_ids=[], trace_id=trace_id, latency_ms=0, cached=False)
 
-        # Reranking Step
         initial_docs_list = list(all_retrieved_docs.values())
         rerank_pairs = [[chat_request.query, doc['text']] for doc in initial_docs_list]
         rerank_scores = app.state.reranker_model.predict(rerank_pairs)
 
         reranked_results = sorted(zip(initial_docs_list, rerank_scores), key=lambda x: x[1], reverse=True)
 
-        # Select top N documents and their data
         top_n = 3
         top_docs_reranked = [doc['text'] for doc, score in reranked_results[:top_n]]
         top_metas = [doc['meta'] for doc, score in reranked_results[:top_n]]
         top_ids_final = [next(id for id, data in all_retrieved_docs.items() if data['text'] == doc_data['text']) for doc_data, score in reranked_results[:top_n]]
 
-        # Build prompt and call final LLM for the answer
         context = "\n\n---\n\n".join(top_docs_reranked)
         final_prompt = f"You are a helpful assistant. Answer the user's question based only on the context provided. If the answer is not in the context, say \"I don't know\".\n\nContext:\n{context}\n\nQuestion:\n{chat_request.query}"
         
@@ -167,7 +149,6 @@ def chat_with_rag(request: Request, chat_request: ChatRequest):
         )
         answer = final_completion.choices[0].message.content
 
-        # Assemble and return the final response
         sources = [Source(doc_id=meta['doc_id'], chunk_id=chunk_id, text=doc) for doc, chunk_id, meta in zip(top_docs_reranked, top_ids_final, top_metas)]
         latency_ms = (time.time() - start_time) * 1000
         

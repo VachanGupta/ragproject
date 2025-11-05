@@ -69,7 +69,6 @@ def run_rag_pipeline(query: str):
     """
     This function contains the full RAG logic, from query to answer.
     """
-    # Multi-Query Generation
     sub_query_prompt = f"Generate 3 diverse search queries based on: {query}"
     try:
         chat_completion = groq_client.chat.completions.create(

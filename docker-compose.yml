@@ -1,6 +1,6 @@
 
 services:
-  # Our FastAPI Application
+  #FastAPI Application
   app:
     build: .
     ports:
@@ -15,7 +15,7 @@ services:
       - chroma
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # PostgreSQL Database
+  # PostgreSQL db
   postgres:
     image: postgres:15
     env_file:
@@ -33,13 +33,11 @@ services:
     volumes:
       - redis_data:/data
 
-  # Chroma Vector DB (for local dev)
   chroma:
     image: chromadb/chroma:latest
     ports:
       - "8001:8000"
 
-  # MinIO S3-compatible Storage
   minio:
     image: minio/minio:latest
     env_file:

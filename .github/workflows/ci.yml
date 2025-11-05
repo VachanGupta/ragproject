@@ -1,5 +1,3 @@
-# In .github/workflows/ci.yml
-
 name: RAG Project CI
 
 on:

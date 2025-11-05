@@ -1,21 +1,20 @@
 ---
 title: RAG Project API & Demo
-emoji: 🤖
 colorFrom: blue
 colorTo: green
 sdk: docker
 app_port: 8000
 ---
 
-# 🚀 RAG Project API
+# RAG Project API
 (The rest of your README.md file follows...)
 
-# 🚀 RAG Project API
+# RAG Project API
 
 This project is a complete, end-to-end Retrieval-Augmented Generation (RAG) system built from scratch. It's designed to answer questions based on ingested documents, leveraging a sophisticated pipeline that includes multi-query retrieval, reranking, and high-speed inference with the Groq API. The entire application is containerized with Docker for easy setup and deployment.
 
 ---
-## 🏛️ Architecture
+## Architecture
 
 The system follows a modern RAG architecture designed for accuracy and performance.
 
@@ -37,7 +36,7 @@ The system follows a modern RAG architecture designed for accuracy and performan
 * **GitHub Actions:** For Continuous Integration (CI), including linting, testing, and evaluation.
 
 ---
-## ✨ Features
+## Features
 
 * **Advanced RAG Pipeline:** Implements Multi-Query Retrieval and Cross-Encoder Reranking for high-accuracy answers.
 * **High-Speed Generation:** Uses the Groq API for near-instant LLM inference.
@@ -62,7 +61,7 @@ The system follows a modern RAG architecture designed for accuracy and performan
 * **Frontend:** Streamlit
 
 ---
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 * Docker and Docker Compose installed.
@@ -88,7 +87,7 @@ The system follows a modern RAG architecture designed for accuracy and performan
     The `-d` flag runs the services in the background. You can view logs with `docker-compose logs -f`. The API will be available at `http://127.0.0.1:8000`.
 
 ---
-## ⚙️ Usage
+## Usage
 
 ### Ingest Data
 Send your document text to the `/ingest` endpoint.
@@ -119,7 +118,7 @@ streamlit run streamlit_app.py
 Open your browser to `http://localhost:8501`.
 
 ---
-## ✅ Testing and Evaluation
+## Testing and Evaluation
 
 ### Running Automated Tests
 The project includes unit and integration tests with `pytest`.
