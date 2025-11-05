@@ -71,7 +71,7 @@ The system follows a modern RAG architecture designed for accuracy and performan
 ### Local Development Setup
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone <https://github.com/VachanGupta/ragproject>
     cd rag-project
     ```
 2.  **Set up your environment variables:**
